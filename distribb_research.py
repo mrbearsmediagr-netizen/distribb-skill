@@ -182,6 +182,31 @@ def scrape_page(url, max_chars=30000):
         return {'error': str(e), 'content': ''}
 
 
+# ── Language helpers ──
+
+def is_greek(language: str) -> bool:
+    """True if the language string denotes Greek (el / gr / Greek / Ελληνικά / Hellenic)."""
+    if not language:
+        return False
+    l = language.strip().lower()
+    return (l in ('el', 'gr') or l.startswith('el-') or l.startswith('el_')
+            or l.startswith('gr-') or l.startswith('gr_')
+            or 'greek' in l or 'hellenic' in l or 'ελλ' in l)
+
+
+def language_note(language: str) -> str:
+    """Instruction so the narrative fields (hook, findings, angle) come out in the target language.
+
+    Search queries stay in whatever language finds the best data; only the human-facing
+    narrative is forced into the article's language.
+    """
+    if is_greek(language):
+        return ("\nWRITE ALL HUMAN-FACING TEXT (hook, findings, research angle, methodology) in "
+                "natural, native Modern Greek with correct accents. Keep search queries in the "
+                "language most likely to surface data-dense pages.")
+    return ""
+
+
 # ── Step 1: Research Planner ──
 
 PLANNER_SYSTEM = """You are an elite research strategist. Plan an original data study that produces
@@ -213,6 +238,7 @@ Business: {business_description}
 Audience: {target_audience}
 Language: {language}
 Date: {datetime.now().strftime("%B %d, %Y")}
+{language_note(language)}
 
 Think step by step:
 1. What strategy fits this topic type?
@@ -505,6 +531,7 @@ COLUMNS: {json.dumps(plan.get('table_columns', []))}
 LANGUAGE: {language}
 DATE: {datetime.now().strftime("%B %d, %Y")}
 ITEMS: {len(unique)} | SOURCES: {len(source_urls)}
+{language_note(language)}
 
 PRE-COMPUTED METRICS (use these exact numbers):
 {json.dumps(metrics, indent=2, default=str)}

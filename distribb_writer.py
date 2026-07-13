@@ -47,7 +47,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 TEST_KEYWORD = "best project management tools for startups"
 TEST_PROJECT_ID = None
 TEST_ARTICLE_STYLE = "professional"
-TEST_LANGUAGE = "en"
+TEST_LANGUAGE = None  # None -> use the project's configured language (e.g. Greek)
 
 # ── AI Client (swap this for your preferred provider) ──
 
@@ -205,21 +205,18 @@ def publish_article(article_id: int) -> dict:
 #  Incorporate these into your writing process however you prefer.
 # ══════════════════════════════════════════════════════════════
 
+# Universal rules — apply in EVERY language. The AI-detection tells that follow
+# are language-specific and get appended based on the article's language.
 SEO_WRITING_RULES = """
 WRITING QUALITY:
 - Write like a knowledgeable human, not AI. Vary sentence length naturally.
-- Start sections with a strong statement, NEVER with "In today's..." or "When it comes to..."
+- Start sections with a strong statement, question, or data point -- never a generic filler opener.
 - Use specific examples, data points, and actionable advice.
 - Never bold the primary keyword in text.
 
-BANNED WORDS/PHRASES (AI detection triggers):
-- "crucial", "comprehensive", "robust", "leverage", "streamline", "delve"
-- "It's worth noting", "In conclusion", "In the ever-evolving landscape"
-- "Game-changer", "Unlock the power", "Take your X to the next level"
-
 INTERNAL LINKING RULES:
 - Place links naturally in the middle of paragraphs, never in intros or conclusions.
-- Use descriptive anchor text (never "click here", "read more", "our blog").
+- Use descriptive anchor text -- never generic "click here" / "read more" style phrasing in ANY language.
 - Never place two links in the same paragraph or consecutive paragraphs.
 - Format: <a href="EXACT_URL_FROM_LIST">descriptive anchor text</a>
 
@@ -239,6 +236,73 @@ CONTENT STRUCTURE:
 - Include a meta description (155 chars max) with the primary keyword.
 """
 
+# English AI-detection tells — used when the article language is English.
+ENGLISH_AI_TELLS = """
+BANNED WORDS/PHRASES (English AI-detection triggers):
+- "crucial", "comprehensive", "robust", "leverage", "streamline", "delve"
+- "It's worth noting", "In conclusion", "In the ever-evolving landscape"
+- "Game-changer", "Unlock the power", "Take your X to the next level"
+- Do NOT open sections with "In today's..." or "When it comes to...".
+"""
+
+# Greek writing guidance — used when the project/article language is Greek.
+# Translating English guardrails word-for-word does not work: Greek has its own
+# LLM clichés and its own "click here" anchors, so it needs native-language rules.
+GREEK_WRITING_RULES = """
+WRITING IN GREEK (Ελληνικά):
+- Write the ENTIRE article in natural, native Modern Greek (δημοτική) with correct
+  monotonic accents (τόνοι). It must read as originally written in Greek, NOT translated.
+- Keep untranslated only the terms Greek audiences genuinely use as-is (brand and product
+  names, and words like "SEO", "e-shop", "email"). Do not dump English words otherwise.
+- Pick one register and keep it consistent: default to the polite plural
+  (πληθυντικός ευγενείας) unless the business voice says otherwise.
+- Localize for the Greek market: € for prices, Greek examples and references, and phrase
+  things the way Greeks actually search -- do not translate the keyword word-for-word if a
+  Greek reader would phrase it differently; write naturally around it.
+
+GREEK AI-DETECTION TELLS TO AVOID (do not use these clichés):
+- "στη σημερινή εποχή" / "στον σημερινό κόσμο" (the Greek "in today's world")
+- "όσον αφορά" as a section opener
+- "αξίζει να σημειωθεί" ("it's worth noting")
+- "συμπερασματικά" / "εν κατακλείδι" ("in conclusion")
+- "στο συνεχώς εξελισσόμενο τοπίο" ("in the ever-evolving landscape")
+- "καθοριστικής σημασίας" ("crucial"), "ολοκληρωμένος/η" as filler ("comprehensive")
+- "αξιοποιήστε" over-used ("leverage"), "ας εμβαθύνουμε" ("delve")
+- "αλλάζει τα δεδομένα" ("game-changer"), "ξεκλειδώστε τη δύναμη" ("unlock the power")
+- "ανεβάστε το X στο επόμενο επίπεδο" ("take X to the next level")
+
+GREEK ANCHOR TEXT (never use as link text):
+- "κάντε κλικ εδώ", "δείτε εδώ", "διαβάστε περισσότερα", "δείτε περισσότερα",
+  "εδώ", "το blog μας" -- use descriptive Greek anchor text instead.
+
+GREEK META DESCRIPTION:
+- Write it in Greek, include the primary keyword, keep it <=155 characters.
+"""
+
+
+def is_greek(language: str) -> bool:
+    """True if the language string denotes Greek (el / gr / Greek / Ελληνικά / Hellenic)."""
+    if not language:
+        return False
+    l = language.strip().lower()
+    return (l in ('el', 'gr') or l.startswith('el-') or l.startswith('el_')
+            or l.startswith('gr-') or l.startswith('gr_')
+            or 'greek' in l or 'hellenic' in l or 'ελλ' in l)
+
+
+def language_directive(language: str) -> str:
+    """A strong, explicit instruction to produce the whole article in the target language."""
+    name = "Greek (Ελληνικά)" if is_greek(language) else (language or "English")
+    return (f"WRITE THE ENTIRE ARTICLE IN {name.upper()} -- title, all headings, body text, and "
+            f"meta description. Do not switch to another language mid-article. Keep only brand "
+            f"names and widely-used technical terms in their original form.")
+
+
+def build_writing_rules(language: str) -> str:
+    """Universal SEO rules composed with the language-specific AI-detection tells."""
+    tells = GREEK_WRITING_RULES if is_greek(language) else ENGLISH_AI_TELLS
+    return SEO_WRITING_RULES + "\n" + tells
+
 
 # ══════════════════════════════════════════════════════════════
 #  EXAMPLE PIPELINE
@@ -248,9 +312,14 @@ CONTENT STRUCTURE:
 # ══════════════════════════════════════════════════════════════
 
 def generate_article(keyword: str, project_id: int, article_style: str = "professional",
-                      language: str = "en", scheduled_date: str = None,
+                      language: str = None, scheduled_date: str = None,
                       auto_publish: bool = False) -> dict:
-    """Example article generation pipeline. Modify as needed."""
+    """Example article generation pipeline. Modify as needed.
+
+    ``language`` is optional. If not given, the project's configured language
+    (from Distribb business context, e.g. "Greek" / "el") is used, so a Greek
+    project produces Greek articles automatically.
+    """
     logger.info(f"{'='*60}")
     logger.info(f"Generating article: '{keyword}' (project {project_id})")
     logger.info(f"{'='*60}")
@@ -267,6 +336,12 @@ def generate_article(keyword: str, project_id: int, article_style: str = "profes
     if biz.get('error'):
         return biz
     logger.info(f"Business: {biz.get('business_name', '?')} ({biz.get('website_url', '?')})")
+
+    # Resolve the effective language: explicit arg wins, else the project's
+    # configured language from business context, else English.
+    if not language:
+        language = biz.get('language') or 'en'
+    logger.info(f"Language: {language}{' (Greek)' if is_greek(language) else ''}")
 
     links_data = get_internal_links(project_id, keyword)
     internal_links = links_data.get('links', [])
@@ -295,15 +370,20 @@ def generate_article(keyword: str, project_id: int, article_style: str = "profes
         competitor_text = f"COMPETITORS (never link to these): {competitor_list}"
 
     # ── Step 3: Generate the article in one shot (or adapt to multi-section) ──
-    prompt = f"""Write a comprehensive, SEO-optimized article about: "{keyword}"
+    writing_rules = build_writing_rules(language)
+
+    prompt = f"""Write a thorough, SEO-optimized article about: "{keyword}"
 
 TODAY'S DATE: {datetime.now().strftime('%B %d, %Y')}
 STYLE: {article_style}
 LANGUAGE: {language}
+
+{language_directive(language)}
+
 BUSINESS: {biz.get('business_name', '')} - {biz.get('description', '')[:400]}
 TARGET AUDIENCE: {biz.get('target_audience', '')}
 
-{SEO_WRITING_RULES}
+{writing_rules}
 
 {internal_links_text}
 
@@ -325,8 +405,12 @@ Write 5-8 sections (H2 headings), 2500-3500 words total. Include internal links
 and backlinks naturally. Output valid HTML, not markdown."""
 
     logger.info("Generating article content with AI...")
+    writer_role = "You are an expert SEO content writer."
+    if is_greek(language):
+        writer_role = ("You are an expert SEO content writer and a native Greek speaker who "
+                       "writes fluent, natural Modern Greek.")
     raw = ai_chat(
-        "You are an expert SEO content writer. Return only the requested JSON.",
+        writer_role + " Return only the requested JSON.",
         prompt, temperature=0.4, max_tokens=12000, json_mode=True
     )
     result = parse_json_from_ai(raw)
@@ -384,7 +468,8 @@ if __name__ == '__main__':
     parser.add_argument('--style', type=str, default=TEST_ARTICLE_STYLE,
                         choices=['professional', 'casual', 'technical', 'listicle', 'how-to'],
                         help='Article writing style')
-    parser.add_argument('--language', type=str, default=TEST_LANGUAGE, help='Content language')
+    parser.add_argument('--language', type=str, default=TEST_LANGUAGE,
+                        help='Content language (e.g. en, el/Greek). Omit to use the project\'s configured language.')
     parser.add_argument('--schedule', type=str, default=None,
                         help='Schedule date (ISO 8601, e.g. 2026-03-25T09:00:00Z)')
     parser.add_argument('--publish', action='store_true', help='Auto-publish after generation')

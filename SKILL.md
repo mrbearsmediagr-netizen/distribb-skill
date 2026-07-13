@@ -482,6 +482,20 @@ curl -s -H "Authorization: Bearer $DISTRIBB_API_KEY" \
 
 When generating content, follow these rules for the best ranking results:
 
+### Write in the Project's Language
+
+The `language` field from `GET /business-context` is the source of truth. Write the **entire** article — title, every heading, body text, and meta description — in that language. Never mix languages mid-article; keep only brand names, product names, and technical terms that native readers genuinely use as-is (e.g. "SEO", "e-shop", "email").
+
+**Greek (Ελληνικά) projects** — when the project language is Greek (`el`, `Greek`, `Ελληνικά`):
+- Write in natural, native Modern Greek (δημοτική) with correct monotonic accents (τόνοι). It must read as originally written in Greek, **not** translated from English.
+- Keep a consistent register — default to the polite plural (πληθυντικός ευγενείας) unless the business voice says otherwise.
+- Localize: use € for prices, Greek examples/references, and phrase things the way Greeks actually search. Do not translate the keyword word-for-word if a Greek reader would phrase it differently — write naturally around it.
+- **Greek AI-detection tells to avoid** (the Greek equivalents of the English list below): "στη σημερινή εποχή" / "στον σημερινό κόσμο", "όσον αφορά" as an opener, "αξίζει να σημειωθεί", "συμπερασματικά" / "εν κατακλείδι", "στο συνεχώς εξελισσόμενο τοπίο", "καθοριστικής σημασίας", "ολοκληρωμένος/η" as filler, over-used "αξιοποιήστε", "ας εμβαθύνουμε", "αλλάζει τα δεδομένα", "ξεκλειδώστε τη δύναμη", "ανεβάστε το X στο επόμενο επίπεδο".
+- **Greek anchor text to avoid**: "κάντε κλικ εδώ", "δείτε εδώ", "διαβάστε περισσότερα", "δείτε περισσότερα", "εδώ", "το blog μας" — use descriptive Greek anchor text instead.
+- Meta description in Greek, includes the primary keyword, ≤155 characters.
+
+The same principle applies to any non-English language: use that language's own AI-tell phrases and anchor-text conventions, not a literal translation of the English rules.
+
 ### Content Quality
 - Write like a knowledgeable human, not AI. Vary sentence length.
 - Use specific examples, data points, and actionable advice.
@@ -490,7 +504,7 @@ When generating content, follow these rules for the best ranking results:
 - Output valid HTML, not markdown.
 
 ### Words and Phrases to Avoid
-These trigger AI detection: "crucial", "comprehensive", "robust", "leverage", "streamline", "delve", "It's worth noting", "In conclusion", "In the ever-evolving landscape", "Game-changer", "Unlock the power", "Take your X to the next level".
+These trigger AI detection **in English content**: "crucial", "comprehensive", "robust", "leverage", "streamline", "delve", "It's worth noting", "In conclusion", "In the ever-evolving landscape", "Game-changer", "Unlock the power", "Take your X to the next level". For Greek (and other non-English) content, avoid the language-native equivalents instead — see **Write in the Project's Language** above.
 
 ### Opening Lines
 Never start sections with "In today's..." or "When it comes to...". Start with a strong statement, question, or data point.
