@@ -51,6 +51,7 @@ class BMSOI_Admin {
 			'bmsoi_shipping_method',
 			'bmsoi_customer_user',
 			'bmsoi_billing_email',
+			'bmsoi_name_prefix',
 			'bmsoi_merge_addresses',
 			'bmsoi_manage_orders',
 			'bmsoi_auto_accept',
@@ -326,6 +327,13 @@ class BMSOI_Admin {
 							<td>
 								<input type="text" id="bmsoi_billing_email" name="bmsoi_billing_email" class="regular-text" value="<?php echo esc_attr( get_option( 'bmsoi_billing_email', '' ) ); ?>">
 								<p class="description"><?php esc_html_e( 'Σταθερό email για όλες τις παραγγελίες Skroutz. Κενό = XXXX@skroutz.gr ανά πελάτη.', 'bm-skroutz-order-import' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="bmsoi_name_prefix"><?php esc_html_e( 'Πρόθεμα ονόματος', 'bm-skroutz-order-import' ); ?></label></th>
+							<td>
+								<input type="text" id="bmsoi_name_prefix" name="bmsoi_name_prefix" class="small-text" style="width:90px" value="<?php echo esc_attr( get_option( 'bmsoi_name_prefix', 'SKR' ) ); ?>">
+								<p class="description"><?php esc_html_e( 'Προστίθεται μπροστά από το όνομα χρέωσης του πελάτη (π.χ. «SKR Κατερίνα Π.»), ώστε οι παραγγελίες Skroutz να ξεχωρίζουν παντού — και στο WooCommerce mobile app. Το όνομα παραλήπτη (αποστολή) μένει καθαρό για τα vouchers των courier. Κενό = απενεργοποίηση.', 'bm-skroutz-order-import' ); ?></p>
 							</td>
 						</tr>
 						<tr>

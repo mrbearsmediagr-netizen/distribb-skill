@@ -30,6 +30,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 * Αποκλεισμός αποστολής email σε ανώνυμες διευθύνσεις @skroutz.gr.
 * Εικονική πύλη πληρωμής «Skroutz Marketplace» για ομαδοποίηση των παραγγελιών.
 * Εικονίδιο Skroutz μέσα στη στήλη «Παραγγελία», ακριβώς πριν το όνομα του πελάτη, ώστε οι παραγγελίες Skroutz να ξεχωρίζουν με μια ματιά (το tooltip δείχνει και Express / Fulfilled by Skroutz).
+* Ρυθμιζόμενο πρόθεμα «SKR» στο όνομα χρέωσης, ώστε οι παραγγελίες Skroutz να αναγνωρίζονται και εκτός wp-admin — π.χ. στο WooCommerce mobile app, στα admin emails και στα exports.
 * Χειροκίνητη εισαγωγή παραγγελίας με βάση τον κωδικό της, και κουμπί «Συγχρονισμός τώρα».
 * Πλήρης συμβατότητα με HPOS (High-Performance Order Storage).
 * Καταγραφή όλων των αιτημάτων στο WooCommerce > Κατάσταση > Αρχεία καταγραφής (πηγή: bm-skroutz).

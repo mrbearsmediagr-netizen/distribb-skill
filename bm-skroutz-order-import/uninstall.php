@@ -18,6 +18,7 @@ $bmsoi_options = array(
 	'bmsoi_shipping_method',
 	'bmsoi_customer_user',
 	'bmsoi_billing_email',
+	'bmsoi_name_prefix',
 	'bmsoi_merge_addresses',
 	'bmsoi_manage_orders',
 	'bmsoi_auto_accept',

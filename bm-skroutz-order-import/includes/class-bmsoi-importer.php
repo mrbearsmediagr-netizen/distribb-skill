@@ -180,7 +180,16 @@ class BMSOI_Importer {
 
 		list( $address_1, $address_2 ) = self::format_address( $address );
 
-		$order->set_billing_first_name( $first_name );
+		// Recognition prefix (e.g. "SKR") on the billing first name, so Skroutz
+		// orders stand out everywhere the buyer name shows — WooCommerce app
+		// included. Shipping name stays clean for courier vouchers/labels.
+		$billing_first_name = $first_name;
+		$prefix             = trim( (string) get_option( 'bmsoi_name_prefix', 'SKR' ) );
+		if ( '' !== $prefix ) {
+			$billing_first_name = trim( $prefix . ' ' . $first_name );
+		}
+
+		$order->set_billing_first_name( $billing_first_name );
 		$order->set_billing_last_name( $last_name );
 		$order->set_billing_address_1( $address_1 );
 		$order->set_billing_address_2( $address_2 );
