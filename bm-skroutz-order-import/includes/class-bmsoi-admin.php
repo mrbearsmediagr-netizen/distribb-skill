@@ -19,11 +19,10 @@ class BMSOI_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metabox' ), 10, 2 );
 
-		// "Κανάλι" column with the Skroutz icon on the orders list (legacy + HPOS).
-		add_filter( 'manage_edit-shop_order_columns', array( __CLASS__, 'add_marketplace_column' ), 20 );
-		add_action( 'manage_shop_order_posts_custom_column', array( __CLASS__, 'render_marketplace_column_legacy' ), 10, 2 );
-		add_filter( 'manage_woocommerce_page_wc-orders_columns', array( __CLASS__, 'add_marketplace_column' ), 20 );
-		add_action( 'manage_woocommerce_page_wc-orders_custom_column', array( __CLASS__, 'render_marketplace_column_hpos' ), 10, 2 );
+		// Mark Skroutz rows on the orders list so the icon can be shown right
+		// before the buyer name (legacy posts table + HPOS table).
+		add_filter( 'woocommerce_shop_order_list_table_order_css_classes', array( __CLASS__, 'hpos_row_classes' ), 10, 2 );
+		add_filter( 'post_class', array( __CLASS__, 'legacy_row_classes' ), 10, 3 );
 
 		add_action( 'admin_post_bmsoi_sync_now', array( __CLASS__, 'handle_sync_now' ) );
 		add_action( 'wp_ajax_bmsoi_fetch_order', array( __CLASS__, 'ajax_fetch_order' ) );
@@ -81,18 +80,22 @@ class BMSOI_Admin {
 		wp_localize_script( 'bmsoi-admin', 'bmsoi', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'bmsoi_ajax' ),
+			'iconUrl' => self::icon_url(),
 			'i18n'    => array(
-				'working'     => __( 'Παρακαλώ περιμένετε…', 'bm-skroutz-order-import' ),
-				'failed'      => __( 'Η ενέργεια απέτυχε.', 'bm-skroutz-order-import' ),
-				'imported'    => __( 'Η παραγγελία ενημερώθηκε. Άνοιγμα σε νέα καρτέλα;', 'bm-skroutz-order-import' ),
-				'copied'      => __( 'Αντιγράφηκε!', 'bm-skroutz-order-import' ),
+				'working'      => __( 'Παρακαλώ περιμένετε…', 'bm-skroutz-order-import' ),
+				'failed'       => __( 'Η ενέργεια απέτυχε.', 'bm-skroutz-order-import' ),
+				'imported'     => __( 'Η παραγγελία ενημερώθηκε. Άνοιγμα σε νέα καρτέλα;', 'bm-skroutz-order-import' ),
+				'copied'       => __( 'Αντιγράφηκε!', 'bm-skroutz-order-import' ),
 				'confirmReject' => __( 'Σίγουρα θέλετε να απορρίψετε την παραγγελία στο Skroutz;', 'bm-skroutz-order-import' ),
+				'skroutzOrder' => __( 'Παραγγελία Skroutz Marketplace', 'bm-skroutz-order-import' ),
+				'express'      => __( 'Express', 'bm-skroutz-order-import' ),
+				'fbs'          => __( 'Fulfilled by Skroutz', 'bm-skroutz-order-import' ),
 			),
 		) );
 	}
 
 	/* ---------------------------------------------------------------------
-	 * Orders list: "Κανάλι" column with the Skroutz icon
+	 * Orders list: Skroutz icon right before the buyer name
 	 * ------------------------------------------------------------------- */
 
 	/**
@@ -107,57 +110,33 @@ class BMSOI_Admin {
 	}
 
 	/**
-	 * Insert the column right after the order number.
+	 * Skroutz marker classes for an order row. The admin JS injects the icon
+	 * into the order-number cell of any row carrying these classes.
 	 */
-	public static function add_marketplace_column( $columns ) {
-		$new = array();
-		foreach ( $columns as $key => $label ) {
-			$new[ $key ] = $label;
-			if ( 'order_number' === $key ) {
-				$new['bmsoi_marketplace'] = __( 'Κανάλι', 'bm-skroutz-order-import' );
+	private static function marketplace_row_classes( $order, $classes ) {
+		if ( $order instanceof WC_Order && bmsoi_is_skroutz_order( $order ) ) {
+			$classes[] = 'bmsoi-skroutz';
+			if ( $order->get_meta( '_skroutz_express' ) ) {
+				$classes[] = 'bmsoi-express';
+			}
+			if ( $order->get_meta( '_skroutz_fulfilled' ) ) {
+				$classes[] = 'bmsoi-fbs';
 			}
 		}
-		if ( ! isset( $new['bmsoi_marketplace'] ) ) {
-			$new['bmsoi_marketplace'] = __( 'Κανάλι', 'bm-skroutz-order-import' );
-		}
-		return $new;
+		return $classes;
 	}
 
-	/** Legacy (posts) orders table. */
-	public static function render_marketplace_column_legacy( $column, $post_id ) {
-		if ( 'bmsoi_marketplace' !== $column ) {
-			return;
-		}
-		self::render_marketplace_cell( wc_get_order( $post_id ) );
+	/** HPOS orders table rows. */
+	public static function hpos_row_classes( $classes, $order ) {
+		return self::marketplace_row_classes( $order, $classes );
 	}
 
-	/** HPOS orders table. */
-	public static function render_marketplace_column_hpos( $column, $order ) {
-		if ( 'bmsoi_marketplace' !== $column ) {
-			return;
+	/** Legacy (posts) orders table rows. */
+	public static function legacy_row_classes( $classes, $css_class, $post_id ) {
+		if ( ! is_admin() || 'shop_order' !== get_post_type( $post_id ) ) {
+			return $classes;
 		}
-		self::render_marketplace_cell( $order );
-	}
-
-	private static function render_marketplace_cell( $order ) {
-		if ( ! $order instanceof WC_Order || ! bmsoi_is_skroutz_order( $order ) ) {
-			echo '<span class="bmsoi-col-empty" aria-hidden="true">&mdash;</span>';
-			return;
-		}
-
-		printf(
-			'<img src="%s" alt="Skroutz" title="%s" class="bmsoi-col-icon" width="24" height="24" loading="lazy">',
-			esc_url( self::icon_url() ),
-			/* translators: %s: Skroutz order code */
-			esc_attr( sprintf( __( 'Παραγγελία Skroutz Marketplace #%s', 'bm-skroutz-order-import' ), bmsoi_order_code( $order ) ) )
-		);
-
-		if ( $order->get_meta( '_skroutz_express' ) ) {
-			echo '<span class="bmsoi-col-flag" title="' . esc_attr__( 'Express παραγγελία', 'bm-skroutz-order-import' ) . '">⚡</span>';
-		}
-		if ( $order->get_meta( '_skroutz_fulfilled' ) ) {
-			echo '<span class="bmsoi-col-flag" title="' . esc_attr__( 'Fulfilled by Skroutz', 'bm-skroutz-order-import' ) . '">📦</span>';
-		}
+		return self::marketplace_row_classes( wc_get_order( $post_id ), $classes );
 	}
 
 	/* ---------------------------------------------------------------------
@@ -364,7 +343,7 @@ class BMSOI_Admin {
 									<img src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="24" height="24" class="bmsoi-col-icon">
 									<input type="url" id="bmsoi_marketplace_icon" name="bmsoi_marketplace_icon" class="regular-text code" value="<?php echo esc_attr( get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) ); ?>">
 								</div>
-								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στη στήλη «Κανάλι» της λίστας παραγγελιών. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στη λίστα παραγγελιών, πριν το όνομα του πελάτη. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
 							</td>
 						</tr>
 						<tr>

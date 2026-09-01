@@ -19,25 +19,17 @@
 	align-items: center;
 }
 
-/* Orders list: "Κανάλι" column */
-.wp-list-table .column-bmsoi_marketplace {
-	width: 68px;
-	text-align: center;
+/* Orders list: inline Skroutz icon before the buyer name */
+.bmsoi-inline-icon {
+	vertical-align: text-bottom;
+	border-radius: 4px;
+	margin: 0 4px 0 1px;
 }
 
+/* Settings page: icon preview */
 .bmsoi-col-icon {
 	vertical-align: middle;
 	border-radius: 5px;
-}
-
-.bmsoi-col-empty {
-	color: #dcdcde;
-}
-
-.bmsoi-col-flag {
-	margin-left: 3px;
-	vertical-align: middle;
-	cursor: default;
 }
 
 /* Order metabox */

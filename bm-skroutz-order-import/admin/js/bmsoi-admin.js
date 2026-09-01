@@ -23,7 +23,70 @@
 		window.alert( message );
 	}
 
+	/**
+	 * Orders list: place the Skroutz icon right before the buyer name.
+	 * Rows are marked server-side with the .bmsoi-skroutz class; the cell
+	 * content is "#44 Name", so the icon is inserted after the "#44 " prefix.
+	 */
+	function markSkroutzRows() {
+		$( 'tr.bmsoi-skroutz' ).each( function () {
+			var $row = $( this );
+			if ( $row.data( 'bmsoiMarked' ) ) {
+				return;
+			}
+			$row.data( 'bmsoiMarked', true );
+
+			var $target = $row.find( 'td.column-order_number a.order-view strong' ).first();
+			if ( ! $target.length ) {
+				$target = $row.find( 'td.column-order_number a.order-view' ).first();
+			}
+			if ( ! $target.length ) {
+				$target = $row.find( 'td.column-order_number' ).first();
+			}
+			if ( ! $target.length ) {
+				return;
+			}
+
+			var title = bmsoi.i18n.skroutzOrder;
+			if ( $row.hasClass( 'bmsoi-express' ) ) {
+				title += ' • ' + bmsoi.i18n.express;
+			}
+			if ( $row.hasClass( 'bmsoi-fbs' ) ) {
+				title += ' • ' + bmsoi.i18n.fbs;
+			}
+
+			var $icon = $( '<img>', {
+				src: bmsoi.iconUrl,
+				alt: 'Skroutz',
+				title: title,
+				'class': 'bmsoi-inline-icon',
+				width: 18,
+				height: 18
+			} );
+
+			// First text node usually reads "#44 Name" — split it so the icon
+			// lands exactly before the name.
+			var textNode = $target.contents().filter( function () {
+				return this.nodeType === 3 && $.trim( this.nodeValue ) !== '';
+			} ).first()[ 0 ];
+
+			if ( textNode ) {
+				var match = textNode.nodeValue.match( /^(\s*#\S+\s+)([\s\S]+)$/ );
+				if ( match ) {
+					var nameNode = document.createTextNode( match[ 2 ] );
+					textNode.nodeValue = match[ 1 ];
+					$( textNode ).after( nameNode );
+					$( nameNode ).before( $icon );
+					return;
+				}
+			}
+			$target.prepend( $icon );
+		} );
+	}
+
 	$( function () {
+
+		markSkroutzRows();
 
 		/* Settings page: copy webhook URL */
 		$( '#bmsoi_copy_webhook' ).on( 'click', function () {
