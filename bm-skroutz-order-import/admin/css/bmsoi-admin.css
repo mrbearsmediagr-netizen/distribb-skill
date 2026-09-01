@@ -1,0 +1,81 @@
+/* Settings page */
+.bmsoi-wrap .bmsoi-section {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 4px 20px 12px;
+	margin: 16px 0;
+	max-width: 900px;
+}
+
+.bmsoi-wrap .bmsoi-section h2 {
+	border-bottom: 1px solid #f0f0f1;
+	padding-bottom: 10px;
+}
+
+.bmsoi-inline {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+/* Order metabox */
+.bmsoi-mb-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.bmsoi-mb-code {
+	font-weight: 600;
+	font-family: monospace;
+}
+
+.bmsoi-mb-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	background: #f0f0f1;
+	color: #3c434a;
+}
+
+.bmsoi-state-open { background: #fcf9e8; color: #996800; }
+.bmsoi-state-accepted { background: #e5f1f8; color: #0a4b78; }
+.bmsoi-state-dispatched,
+.bmsoi-state-delivered { background: #edfaef; color: #007017; }
+.bmsoi-state-cancelled,
+.bmsoi-state-rejected,
+.bmsoi-state-expired { background: #fcf0f1; color: #8a2424; }
+
+.bmsoi-mb-flag {
+	margin: 2px 0;
+	color: #50575e;
+}
+
+.bmsoi-mb-btn {
+	width: 100%;
+	text-align: center;
+	margin-top: 4px;
+}
+
+.bmsoi-mb-danger {
+	color: #b32d2e;
+	text-decoration: none;
+	cursor: pointer;
+	border: 0;
+	background: none;
+	padding: 0;
+	margin: 8px 0 4px;
+}
+
+.bmsoi-mb-reject #bmsoi_reject_form {
+	border-top: 1px dashed #dcdcde;
+	margin-top: 6px;
+	padding-top: 6px;
+}
+
+.bmsoi-error {
+	color: #b32d2e;
+}

@@ -1,0 +1,62 @@
+=== BM Skroutz Order Import for WooCommerce ===
+Contributors: bearsmedia
+Tags: woocommerce, skroutz, marketplace, orders, import
+Requires at least: 5.8
+Tested up to: 6.9
+Requires PHP: 7.4
+Stable tag: 1.0.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Αυτόματη εισαγωγή παραγγελιών από το Skroutz Marketplace στο WooCommerce μέσω του Skroutz Merchant API (webhook + polling).
+
+== Description ==
+
+Το plugin συνδέει το WooCommerce κατάστημά σας με το Skroutz Marketplace και εισάγει αυτόματα τις παραγγελίες με δύο τρόπους:
+
+* **Webhook (push):** Το Skroutz ειδοποιεί το e-shop σε πραγματικό χρόνο για κάθε νέα παραγγελία ή αλλαγή κατάστασης.
+* **API polling (pull):** Ακόμα και χωρίς webhook, το plugin ελέγχει περιοδικά το Skroutz Merchant API (προεπιλογή: κάθε 10 λεπτά), εισάγει τις νέες παραγγελίες και ενημερώνει τις υπάρχουσες (αποδοχή, αποστολή, ακύρωση, επιστροφή).
+
+= Λειτουργίες =
+
+* Δημιουργία/ενημέρωση παραγγελιών WooCommerce με πλήρη στοιχεία πελάτη, διεύθυνσης (και σημείων παραλαβής/lockers), τηλεφώνων και σχολίων.
+* Αντιστοίχιση προϊόντων μέσω SKU ή ID προϊόντος, με υποστήριξη παραλλαγών (μέγεθος/χρώμα).
+* Σωστός υπολογισμός ΦΠΑ — οι τιμές του Skroutz μετατρέπονται σε καθαρές αξίες και το WooCommerce υπολογίζει τους φόρους.
+* Στοιχεία τιμολογίου (επωνυμία, ΑΦΜ, ΔΟΥ, επάγγελμα) ως meta πεδία, συμβατά με τα γνωστά ERP bridges.
+* Αποδοχή/απόρριψη παραγγελιών από το metabox της παραγγελίας, με επιλογή σημείου και παραθύρου παραλαβής.
+* Αυτόματη αποδοχή νέων παραγγελιών (προαιρετικά) ή αποδοχή μέσω αλλαγής κατάστασης «Σε αναμονή» → «Σε επεξεργασία».
+* Κατάσταση «Προς επιστροφή» για ακυρώσεις μετά την αποστολή.
+* Δεν μειώνεται το απόθεμα για παραγγελίες Fulfilled by Skroutz.
+* Αποκλεισμός αποστολής email σε ανώνυμες διευθύνσεις @skroutz.gr.
+* Εικονική πύλη πληρωμής «Skroutz Marketplace» για ομαδοποίηση των παραγγελιών.
+* Χειροκίνητη εισαγωγή παραγγελίας με βάση τον κωδικό της, και κουμπί «Συγχρονισμός τώρα».
+* Πλήρης συμβατότητα με HPOS (High-Performance Order Storage).
+* Καταγραφή όλων των αιτημάτων στο WooCommerce > Κατάσταση > Αρχεία καταγραφής (πηγή: bm-skroutz).
+* Συμβατότητα με παραγγελίες που έχουν ήδη εισαχθεί από το WebExpert Smart Cart plugin (δεν δημιουργούνται διπλότυπα).
+
+== Installation ==
+
+1. Ανεβάστε τον φάκελο `bm-skroutz-order-import` στο `/wp-content/plugins/` (ή το zip μέσω Πρόσθετα > Νέο πρόσθετο > Μεταφόρτωση).
+2. Ενεργοποιήστε το πρόσθετο.
+3. Πηγαίνετε στο **WooCommerce > Skroutz Import** και συμπληρώστε το **Skroutz API token** (από το merchant panel του Skroutz).
+4. Αντιγράψτε το **Webhook URL** και καταχωρήστε το στο merchant panel του Skroutz (Merchants > Services > Skroutz Marketplace).
+5. Επιλέξτε τρόπο πληρωμής/αποστολής και αποθηκεύστε.
+
+== Frequently Asked Questions ==
+
+= Χρειάζομαι οπωσδήποτε webhook; =
+
+Όχι. Με ενεργό το polling, οι παραγγελίες εισάγονται μέσω API στο διάστημα που έχετε ορίσει. Το webhook απλώς τις φέρνει σε πραγματικό χρόνο.
+
+= Πώς αντιστοιχίζονται τα προϊόντα; =
+
+Το `shop_uid` / `shop_variation_uid` του Skroutz αντιστοιχίζεται με το SKU (προεπιλογή) ή το ID του προϊόντος στο WooCommerce — ό,τι στέλνετε ως μοναδικό αναγνωριστικό στο XML σας.
+
+= Υπάρχουν hooks για προσαρμογές; =
+
+Ναι: `bmsoi_order_imported`, `bmsoi_webhook_received`, `bmsoi_status_for_state`, `bmsoi_pre_resolve_product`, `bmsoi_resolve_product_fallback`, καθώς και φίλτρα για όλα τα meta keys τιμολογίου.
+
+== Changelog ==
+
+= 1.0.0 =
+* Αρχική έκδοση.
