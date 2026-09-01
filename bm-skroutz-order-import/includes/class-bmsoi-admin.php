@@ -28,6 +28,7 @@ class BMSOI_Admin {
 		add_action( 'wp_ajax_bmsoi_fetch_order', array( __CLASS__, 'ajax_fetch_order' ) );
 		add_action( 'wp_ajax_bmsoi_accept_order', array( __CLASS__, 'ajax_accept_order' ) );
 		add_action( 'wp_ajax_bmsoi_reject_order', array( __CLASS__, 'ajax_reject_order' ) );
+		add_action( 'wp_ajax_bmsoi_check_orders', array( __CLASS__, 'ajax_check_orders' ) );
 	}
 
 	public static function register_menu() {
@@ -646,6 +647,31 @@ class BMSOI_Admin {
 		}
 
 		wp_send_json_success();
+	}
+
+	/**
+	 * Fallback for the orders-list icon: the admin JS sends the order IDs it
+	 * sees in the table and gets back which of them are Skroutz orders. Used
+	 * when the row CSS classes are missing (custom admin themes etc.).
+	 */
+	public static function ajax_check_orders() {
+		self::verify_ajax();
+
+		$ids = isset( $_POST['order_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['order_ids'] ) ) : array();
+		$ids = array_slice( array_filter( array_unique( $ids ) ), 0, 200 );
+
+		$orders = array();
+		foreach ( $ids as $id ) {
+			$order = wc_get_order( $id );
+			if ( $order instanceof WC_Order && bmsoi_is_skroutz_order( $order ) ) {
+				$orders[ $id ] = array(
+					'express' => (bool) $order->get_meta( '_skroutz_express' ),
+					'fbs'     => (bool) $order->get_meta( '_skroutz_fulfilled' ),
+				);
+			}
+		}
+
+		wp_send_json_success( array( 'orders' => $orders ) );
 	}
 
 	public static function handle_sync_now() {

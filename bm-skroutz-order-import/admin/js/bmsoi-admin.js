@@ -84,9 +84,54 @@
 		} );
 	}
 
+	/**
+	 * Fallback: rows without the server-side .bmsoi-skroutz class (e.g. when a
+	 * custom admin theme rebuilds the table) are checked once via AJAX using
+	 * the order IDs found in the row id attributes (post-123 / order-123).
+	 */
+	function checkUnmarkedRows() {
+		if ( ! $( 'table.wp-list-table td.column-order_number' ).length ) {
+			return;
+		}
+
+		var ids = [];
+		$( 'table.wp-list-table tbody tr' ).each( function () {
+			var match = ( this.id || '' ).match( /^(?:post|order)-(\d+)$/ );
+			if ( match && ! $( this ).hasClass( 'bmsoi-skroutz' ) ) {
+				ids.push( match[ 1 ] );
+			}
+		} );
+
+		if ( ! ids.length ) {
+			return;
+		}
+
+		$.post( bmsoi.ajaxUrl, { action: 'bmsoi_check_orders', nonce: bmsoi.nonce, order_ids: ids } )
+			.done( function ( response ) {
+				if ( ! response || ! response.success || ! response.data || ! response.data.orders ) {
+					return;
+				}
+				$.each( response.data.orders, function ( id, flags ) {
+					var $row = $( '#post-' + id + ', #order-' + id ).first();
+					if ( ! $row.length ) {
+						return;
+					}
+					$row.addClass( 'bmsoi-skroutz' );
+					if ( flags.express ) {
+						$row.addClass( 'bmsoi-express' );
+					}
+					if ( flags.fbs ) {
+						$row.addClass( 'bmsoi-fbs' );
+					}
+				} );
+				markSkroutzRows();
+			} );
+	}
+
 	$( function () {
 
 		markSkroutzRows();
+		checkUnmarkedRows();
 
 		/* Settings page: copy webhook URL */
 		$( '#bmsoi_copy_webhook' ).on( 'click', function () {

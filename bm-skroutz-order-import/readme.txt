@@ -4,7 +4,7 @@ Tags: woocommerce, skroutz, marketplace, orders, import
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,11 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Ναι: `bmsoi_order_imported`, `bmsoi_webhook_received`, `bmsoi_status_for_state`, `bmsoi_pre_resolve_product`, `bmsoi_resolve_product_fallback`, καθώς και φίλτρα για όλα τα meta keys τιμολογίου.
 
 == Changelog ==
+
+= 1.1.0 =
+* Εικονίδιο Skroutz στη λίστα παραγγελιών, ακριβώς πριν το όνομα του πελάτη (αντικαθιστά τη στήλη «Κανάλι»), με AJAX fallback για custom admin themes.
+* Πρόθεμα «SKR» στο όνομα χρέωσης (ρυθμιζόμενο) — αναγνώριση και στο WooCommerce mobile app.
+* Όριο «Εισαγωγή παραγγελιών από»: αυτόματη εισαγωγή μόνο για παραγγελίες μετά την ενεργοποίηση.
 
 = 1.0.0 =
 * Αρχική έκδοση.
