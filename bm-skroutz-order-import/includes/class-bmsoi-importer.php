@@ -45,6 +45,16 @@ class BMSOI_Importer {
 				return null;
 			}
 
+			// "From now on" cutoff: never auto-import orders created before the
+			// plugin was activated. Manual imports ($bypass_lock) go through.
+			if ( $is_new && ! $bypass_lock ) {
+				$since = bmsoi_import_since();
+				if ( $since && ! empty( $sc_order->created_at ) && strtotime( $sc_order->created_at ) < $since ) {
+					bmsoi_log( "Order {$code}: skipped, created before the import-start date." );
+					return null;
+				}
+			}
+
 			$order = $is_new ? new WC_Order() : wc_get_order( $order_id );
 			if ( ! $order instanceof WC_Order ) {
 				return new WP_Error( 'bmsoi_order_load', sprintf( __( 'Αποτυχία φόρτωσης της παραγγελίας #%d.', 'bm-skroutz-order-import' ), $order_id ) );

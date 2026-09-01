@@ -64,6 +64,26 @@ class BMSOI_Admin {
 		foreach ( $settings as $setting ) {
 			register_setting( 'bmsoi_settings', $setting );
 		}
+
+		register_setting( 'bmsoi_settings', 'bmsoi_import_since', array(
+			'sanitize_callback' => array( __CLASS__, 'sanitize_import_since' ),
+		) );
+	}
+
+	/**
+	 * The "import from" field posts a datetime-local value in the site's
+	 * timezone; store it as a unix timestamp. Empty = no cutoff.
+	 */
+	public static function sanitize_import_since( $value ) {
+		if ( is_numeric( $value ) ) {
+			return (int) $value;
+		}
+		$value = trim( (string) $value );
+		if ( '' === $value ) {
+			return 0;
+		}
+		$datetime = date_create_immutable( $value, wp_timezone() );
+		return $datetime ? $datetime->getTimestamp() : (int) get_option( 'bmsoi_import_since', 0 );
 	}
 
 	public static function enqueue_assets( $hook ) {
@@ -224,6 +244,14 @@ class BMSOI_Admin {
 							<td>
 								<input type="text" id="bmsoi_webhook_secret" name="bmsoi_webhook_secret" class="regular-text code" value="<?php echo esc_attr( get_option( 'bmsoi_webhook_secret', '' ) ); ?>">
 								<p class="description"><?php esc_html_e( 'Προστατεύει το webhook endpoint. Αν το αλλάξετε, ενημερώστε και το URL στο Skroutz. Κενό = χωρίς έλεγχο.', 'bm-skroutz-order-import' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="bmsoi_import_since"><?php esc_html_e( 'Εισαγωγή παραγγελιών από', 'bm-skroutz-order-import' ); ?></label></th>
+							<td>
+								<?php $since = (int) get_option( 'bmsoi_import_since', 0 ); ?>
+								<input type="datetime-local" id="bmsoi_import_since" name="bmsoi_import_since" value="<?php echo esc_attr( $since ? wp_date( 'Y-m-d\TH:i', $since ) : '' ); ?>">
+								<p class="description"><?php esc_html_e( 'Παραγγελίες Skroutz που δημιουργήθηκαν ΠΡΙΝ από αυτή τη στιγμή δεν εισάγονται αυτόματα (ούτε από webhook ούτε από polling) — μόνο οι νεότερες. Ορίζεται αυτόματα στην ενεργοποίηση του πρόσθετου. Η χειροκίνητη εισαγωγή με κωδικό παραγγελίας τις φέρνει κανονικά. Κενό = χωρίς όριο (εισαγωγή και παλαιότερων).', 'bm-skroutz-order-import' ); ?></p>
 							</td>
 						</tr>
 						<tr>

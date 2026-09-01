@@ -82,6 +82,21 @@ function bmsoi_order_code( $order ) {
 }
 
 /**
+ * Import-start cutoff (unix timestamp). Skroutz orders created before this
+ * moment are never imported automatically — only from the activation of the
+ * plugin onwards. 0 = no cutoff. Initialised lazily so upgrades without
+ * re-activation are covered too.
+ */
+function bmsoi_import_since() {
+	$since = get_option( 'bmsoi_import_since', false );
+	if ( false === $since ) {
+		$since = time();
+		update_option( 'bmsoi_import_since', $since );
+	}
+	return (int) $since;
+}
+
+/**
  * Debug logger (WooCommerce > Status > Logs, source: bm-skroutz).
  */
 function bmsoi_log( $message, $level = 'info' ) {
@@ -160,6 +175,10 @@ function bmsoi_register_order_hooks() {
 register_activation_hook( __FILE__, function () {
 	if ( ! get_option( 'bmsoi_webhook_secret' ) ) {
 		update_option( 'bmsoi_webhook_secret', wp_generate_password( 24, false, false ) );
+	}
+	// Only import orders created from this moment on.
+	if ( false === get_option( 'bmsoi_import_since', false ) ) {
+		update_option( 'bmsoi_import_since', time() );
 	}
 	// The plugin is included mid-request on activation, so the custom cron
 	// interval isn't registered yet — add it before scheduling.
