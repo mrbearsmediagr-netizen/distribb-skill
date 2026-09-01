@@ -19,6 +19,12 @@ class BMSOI_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metabox' ), 10, 2 );
 
+		// "Κανάλι" column with the Skroutz icon on the orders list (legacy + HPOS).
+		add_filter( 'manage_edit-shop_order_columns', array( __CLASS__, 'add_marketplace_column' ), 20 );
+		add_action( 'manage_shop_order_posts_custom_column', array( __CLASS__, 'render_marketplace_column_legacy' ), 10, 2 );
+		add_filter( 'manage_woocommerce_page_wc-orders_columns', array( __CLASS__, 'add_marketplace_column' ), 20 );
+		add_action( 'manage_woocommerce_page_wc-orders_custom_column', array( __CLASS__, 'render_marketplace_column_hpos' ), 10, 2 );
+
 		add_action( 'admin_post_bmsoi_sync_now', array( __CLASS__, 'handle_sync_now' ) );
 		add_action( 'wp_ajax_bmsoi_fetch_order', array( __CLASS__, 'ajax_fetch_order' ) );
 		add_action( 'wp_ajax_bmsoi_accept_order', array( __CLASS__, 'ajax_accept_order' ) );
@@ -54,6 +60,7 @@ class BMSOI_Admin {
 			'bmsoi_polling_interval',
 			'bmsoi_disable_emails',
 			'bmsoi_debug',
+			'bmsoi_marketplace_icon',
 		);
 		foreach ( $settings as $setting ) {
 			register_setting( 'bmsoi_settings', $setting );
@@ -62,7 +69,7 @@ class BMSOI_Admin {
 
 	public static function enqueue_assets( $hook ) {
 		$screen    = get_current_screen();
-		$is_order  = $screen && in_array( $screen->id, array( 'shop_order', 'woocommerce_page_wc-orders' ), true );
+		$is_order  = $screen && in_array( $screen->id, array( 'shop_order', 'edit-shop_order', 'woocommerce_page_wc-orders' ), true );
 		$is_plugin = false !== strpos( (string) $hook, self::PAGE_SLUG );
 
 		if ( ! $is_order && ! $is_plugin ) {
@@ -82,6 +89,75 @@ class BMSOI_Admin {
 				'confirmReject' => __( 'Σίγουρα θέλετε να απορρίψετε την παραγγελία στο Skroutz;', 'bm-skroutz-order-import' ),
 			),
 		) );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Orders list: "Κανάλι" column with the Skroutz icon
+	 * ------------------------------------------------------------------- */
+
+	/**
+	 * URL of the Skroutz badge icon. Configurable; falls back to the bundled SVG.
+	 */
+	public static function icon_url() {
+		$url = trim( (string) get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) );
+		if ( '' === $url ) {
+			$url = BMSOI_PLUGIN_URL . 'admin/img/skroutz-icon.svg';
+		}
+		return apply_filters( 'bmsoi_marketplace_icon_url', $url );
+	}
+
+	/**
+	 * Insert the column right after the order number.
+	 */
+	public static function add_marketplace_column( $columns ) {
+		$new = array();
+		foreach ( $columns as $key => $label ) {
+			$new[ $key ] = $label;
+			if ( 'order_number' === $key ) {
+				$new['bmsoi_marketplace'] = __( 'Κανάλι', 'bm-skroutz-order-import' );
+			}
+		}
+		if ( ! isset( $new['bmsoi_marketplace'] ) ) {
+			$new['bmsoi_marketplace'] = __( 'Κανάλι', 'bm-skroutz-order-import' );
+		}
+		return $new;
+	}
+
+	/** Legacy (posts) orders table. */
+	public static function render_marketplace_column_legacy( $column, $post_id ) {
+		if ( 'bmsoi_marketplace' !== $column ) {
+			return;
+		}
+		self::render_marketplace_cell( wc_get_order( $post_id ) );
+	}
+
+	/** HPOS orders table. */
+	public static function render_marketplace_column_hpos( $column, $order ) {
+		if ( 'bmsoi_marketplace' !== $column ) {
+			return;
+		}
+		self::render_marketplace_cell( $order );
+	}
+
+	private static function render_marketplace_cell( $order ) {
+		if ( ! $order instanceof WC_Order || ! bmsoi_is_skroutz_order( $order ) ) {
+			echo '<span class="bmsoi-col-empty" aria-hidden="true">&mdash;</span>';
+			return;
+		}
+
+		printf(
+			'<img src="%s" alt="Skroutz" title="%s" class="bmsoi-col-icon" width="24" height="24" loading="lazy">',
+			esc_url( self::icon_url() ),
+			/* translators: %s: Skroutz order code */
+			esc_attr( sprintf( __( 'Παραγγελία Skroutz Marketplace #%s', 'bm-skroutz-order-import' ), bmsoi_order_code( $order ) ) )
+		);
+
+		if ( $order->get_meta( '_skroutz_express' ) ) {
+			echo '<span class="bmsoi-col-flag" title="' . esc_attr__( 'Express παραγγελία', 'bm-skroutz-order-import' ) . '">⚡</span>';
+		}
+		if ( $order->get_meta( '_skroutz_fulfilled' ) ) {
+			echo '<span class="bmsoi-col-flag" title="' . esc_attr__( 'Fulfilled by Skroutz', 'bm-skroutz-order-import' ) . '">📦</span>';
+		}
 	}
 
 	/* ---------------------------------------------------------------------
@@ -282,6 +358,16 @@ class BMSOI_Admin {
 							</td>
 						</tr>
 						<tr>
+							<th scope="row"><label for="bmsoi_marketplace_icon"><?php esc_html_e( 'Εικονίδιο Skroutz', 'bm-skroutz-order-import' ); ?></label></th>
+							<td>
+								<div class="bmsoi-inline">
+									<img src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="24" height="24" class="bmsoi-col-icon">
+									<input type="url" id="bmsoi_marketplace_icon" name="bmsoi_marketplace_icon" class="regular-text code" value="<?php echo esc_attr( get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) ); ?>">
+								</div>
+								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στη στήλη «Κανάλι» της λίστας παραγγελιών. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th scope="row"><?php esc_html_e( 'Καταγραφή (log)', 'bm-skroutz-order-import' ); ?></th>
 							<td>
 								<label><input type="checkbox" name="bmsoi_debug" value="yes" <?php checked( get_option( 'bmsoi_debug', 'yes' ), 'yes' ); ?>> <?php esc_html_e( 'Καταγραφή αιτημάτων στο WooCommerce > Κατάσταση > Αρχεία καταγραφής (πηγή: bm-skroutz)', 'bm-skroutz-order-import' ); ?></label>
@@ -380,6 +466,7 @@ class BMSOI_Admin {
 		?>
 		<div class="bmsoi-mb" data-order="<?php echo esc_attr( $code ); ?>">
 			<div class="bmsoi-mb-header">
+				<img class="bmsoi-mb-icon" src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="20" height="20">
 				<span class="bmsoi-mb-code">#<?php echo esc_html( $code ); ?></span>
 				<span class="bmsoi-mb-badge bmsoi-state-<?php echo esc_attr( $state ); ?>"><?php echo esc_html( $labels[ $state ] ?? $state ); ?></span>
 			</div>

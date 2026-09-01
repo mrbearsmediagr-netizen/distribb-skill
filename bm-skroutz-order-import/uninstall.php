@@ -26,6 +26,7 @@ $bmsoi_options = array(
 	'bmsoi_polling_interval',
 	'bmsoi_disable_emails',
 	'bmsoi_debug',
+	'bmsoi_marketplace_icon',
 );
 
 foreach ( $bmsoi_options as $bmsoi_option ) {

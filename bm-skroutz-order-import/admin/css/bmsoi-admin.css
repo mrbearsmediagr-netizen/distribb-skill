@@ -19,12 +19,37 @@
 	align-items: center;
 }
 
+/* Orders list: "Κανάλι" column */
+.wp-list-table .column-bmsoi_marketplace {
+	width: 68px;
+	text-align: center;
+}
+
+.bmsoi-col-icon {
+	vertical-align: middle;
+	border-radius: 5px;
+}
+
+.bmsoi-col-empty {
+	color: #dcdcde;
+}
+
+.bmsoi-col-flag {
+	margin-left: 3px;
+	vertical-align: middle;
+	cursor: default;
+}
+
 /* Order metabox */
 .bmsoi-mb-header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	margin-bottom: 8px;
+}
+
+.bmsoi-mb-icon {
+	border-radius: 4px;
 }
 
 .bmsoi-mb-code {
