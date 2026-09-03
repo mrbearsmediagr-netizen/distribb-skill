@@ -4,7 +4,7 @@ Tags: woocommerce, skroutz, marketplace, orders, import
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,11 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Ναι: `bmsoi_order_imported`, `bmsoi_webhook_received`, `bmsoi_status_for_state`, `bmsoi_pre_resolve_product`, `bmsoi_resolve_product_fallback`, καθώς και φίλτρα για όλα τα meta keys τιμολογίου.
 
 == Changelog ==
+
+= 1.1.3 =
+* Διόρθωση: το metabox της παραγγελίας δεν μπορεί πλέον να «ρίξει» τη σελίδα διαχείρισης — η εμφάνιση και η εγγραφή του τυλίγονται σε try/catch και τα σφάλματα καταγράφονται αντί να εμφανίζουν κρίσιμο σφάλμα.
+* Βελτίωση: η κλήση στο Skroutz API για το metabox αποθηκεύεται προσωρινά (2 λεπτά), ώστε το άνοιγμα παραγγελίας να μην κάνει νέα blocking κλήση κάθε φορά (απέτρεπε timeouts σε ορισμένους servers).
+* Θωράκιση ανάγνωσης πεδίων (pickup/reject options) όταν το API επιστρέφει απρόσμενη δομή.
 
 = 1.1.2 =
 * Αφαίρεση της ρύθμισης «Εικονίδιο Skroutz» και της εξάρτησης από εξωτερική εικόνα — η καρτέλα (metabox) της παραγγελίας δείχνει πλέον τον ίδιο δείκτη (🟠) με τη λίστα.

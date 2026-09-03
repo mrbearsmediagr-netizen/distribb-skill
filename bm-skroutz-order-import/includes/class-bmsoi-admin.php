@@ -401,40 +401,75 @@ class BMSOI_Admin {
 	 * Order metabox
 	 * ------------------------------------------------------------------- */
 
+	/**
+	 * Fetch a Skroutz order for the metabox, cached briefly so opening an order
+	 * page does not make a fresh blocking API call every time (which can time
+	 * out on some hosts and white-screen the order screen).
+	 */
+	private static function cached_order_fetch( $code ) {
+		$key    = 'bmsoi_mb_' . md5( (string) $code );
+		$cached = get_transient( $key );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$response = BMSOI_API::get_order( $code );
+
+		// Only cache a good response; let errors retry on the next load.
+		if ( ! is_wp_error( $response ) && ! empty( $response->order ) ) {
+			set_transient( $key, $response, 2 * MINUTE_IN_SECONDS );
+		}
+		return $response;
+	}
+
 	public static function register_metabox( $post_type, $post ) {
 		if ( ! in_array( $post_type, array( 'shop_order', 'woocommerce_page_wc-orders' ), true ) ) {
 			return;
 		}
 
-		$order = ( $post instanceof WP_Post ) ? wc_get_order( $post->ID ) : $post;
-		if ( ! $order instanceof WC_Order || ! bmsoi_is_skroutz_order( $order ) ) {
-			return;
-		}
+		try {
+			$order = ( $post instanceof WP_Post ) ? wc_get_order( $post->ID ) : $post;
+			if ( ! $order instanceof WC_Order || ! bmsoi_is_skroutz_order( $order ) ) {
+				return;
+			}
 
-		$screen = 'shop_order';
-		if ( class_exists( '\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController' )
-			&& wc_get_container()->get( \Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class )->custom_orders_table_usage_is_enabled() ) {
-			$screen = wc_get_page_screen_id( 'shop-order' );
-		}
+			$screen = 'shop_order';
+			if ( class_exists( '\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController' )
+				&& wc_get_container()->get( \Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class )->custom_orders_table_usage_is_enabled() ) {
+				$screen = wc_get_page_screen_id( 'shop-order' );
+			}
 
-		add_meta_box(
-			'bmsoi_metabox',
-			__( 'Skroutz Marketplace', 'bm-skroutz-order-import' ),
-			array( __CLASS__, 'render_metabox' ),
-			$screen,
-			'side',
-			'high'
-		);
+			add_meta_box(
+				'bmsoi_metabox',
+				__( 'Skroutz Marketplace', 'bm-skroutz-order-import' ),
+				array( __CLASS__, 'render_metabox' ),
+				$screen,
+				'side',
+				'high'
+			);
+		} catch ( \Throwable $e ) {
+			// Never let metabox registration break the order screen.
+			bmsoi_log( 'Metabox register failed: ' . $e->getMessage(), 'error' );
+		}
 	}
 
 	public static function render_metabox( $post ) {
+		try {
+			self::render_metabox_body( $post );
+		} catch ( \Throwable $e ) {
+			bmsoi_log( 'Metabox render failed: ' . $e->getMessage(), 'error' );
+			echo '<p class="bmsoi-error">' . esc_html__( 'Αδυναμία εμφάνισης των στοιχείων Skroutz.', 'bm-skroutz-order-import' ) . '</p>';
+		}
+	}
+
+	private static function render_metabox_body( $post ) {
 		$order = ( $post instanceof WP_Post ) ? wc_get_order( $post->ID ) : $post;
 		if ( ! $order instanceof WC_Order ) {
 			return;
 		}
 
 		$code     = bmsoi_order_code( $order );
-		$response = BMSOI_API::get_order( $code );
+		$response = self::cached_order_fetch( $code );
 
 		if ( is_wp_error( $response ) || empty( $response->order ) ) {
 			echo '<p class="bmsoi-error">' . esc_html__( 'Αδυναμία ανάκτησης της παραγγελίας από το Skroutz API. Ελέγξτε το API token.', 'bm-skroutz-order-import' ) . '</p>';
@@ -492,13 +527,16 @@ class BMSOI_Admin {
 				<p><strong><?php esc_html_e( 'Αποστολή έως:', 'bm-skroutz-order-import' ); ?></strong> <?php echo esc_html( date_i18n( 'd/m/Y H:i', strtotime( $sc->dispatch_until ) ) ); ?></p>
 			<?php endif; ?>
 
-			<?php if ( 'open' === $state && empty( $sc->express ) && empty( $sc->store_pickup ) && ! empty( $sc->accept_options ) ) : ?>
+			<?php if ( 'open' === $state && empty( $sc->express ) && empty( $sc->store_pickup ) && ! empty( $sc->accept_options ) ) :
+				$parcel_options = (array) ( $sc->accept_options->number_of_parcels ?? array( 1 ) );
+				$parcels        = (int) ( reset( $parcel_options ) ?: 1 );
+				?>
 				<div class="bmsoi-mb-accept">
 					<p>
 						<label for="bmsoi_pickup_location"><?php esc_html_e( 'Σημείο παραλαβής', 'bm-skroutz-order-import' ); ?></label>
 						<select id="bmsoi_pickup_location" class="widefat">
 							<?php foreach ( (array) ( $sc->accept_options->pickup_location ?? array() ) as $location ) : ?>
-								<option value="<?php echo esc_attr( $location->id ); ?>"><?php echo esc_html( $location->label ); ?></option>
+								<option value="<?php echo esc_attr( is_object( $location ) ? ( $location->id ?? '' ) : '' ); ?>"><?php echo esc_html( is_object( $location ) ? ( $location->label ?? '' ) : (string) $location ); ?></option>
 							<?php endforeach; ?>
 						</select>
 					</p>
@@ -506,11 +544,11 @@ class BMSOI_Admin {
 						<label for="bmsoi_pickup_window"><?php esc_html_e( 'Παράθυρο παραλαβής', 'bm-skroutz-order-import' ); ?></label>
 						<select id="bmsoi_pickup_window" class="widefat">
 							<?php foreach ( (array) ( $sc->accept_options->pickup_window ?? array() ) as $window ) : ?>
-								<option value="<?php echo esc_attr( $window->id ); ?>"><?php echo esc_html( $window->label ); ?></option>
+								<option value="<?php echo esc_attr( is_object( $window ) ? ( $window->id ?? '' ) : '' ); ?>"><?php echo esc_html( is_object( $window ) ? ( $window->label ?? '' ) : (string) $window ); ?></option>
 							<?php endforeach; ?>
 						</select>
 					</p>
-					<input type="hidden" id="bmsoi_parcels" value="<?php echo esc_attr( (int) reset( (array) ( $sc->accept_options->number_of_parcels ?? array( 1 ) ) ) ); ?>">
+					<input type="hidden" id="bmsoi_parcels" value="<?php echo esc_attr( $parcels ); ?>">
 					<button type="button" class="button button-primary bmsoi-mb-btn" id="bmsoi_accept"><?php esc_html_e( 'Αποδοχή παραγγελίας', 'bm-skroutz-order-import' ); ?></button>
 				</div>
 			<?php endif; ?>
@@ -523,7 +561,8 @@ class BMSOI_Admin {
 							<label for="bmsoi_reject_reason"><?php esc_html_e( 'Αιτιολογία', 'bm-skroutz-order-import' ); ?></label>
 							<select id="bmsoi_reject_reason" class="widefat">
 								<?php foreach ( (array) $sc->reject_options->line_item_rejection_reasons as $reason ) : ?>
-									<option value="<?php echo esc_attr( $reason->id ); ?>"><?php echo esc_html( $reason->label ); ?></option>
+									<?php if ( ! is_object( $reason ) ) { continue; } ?>
+									<option value="<?php echo esc_attr( $reason->id ?? '' ); ?>"><?php echo esc_html( $reason->label ?? '' ); ?></option>
 								<?php endforeach; ?>
 							</select>
 						</p>
@@ -575,6 +614,8 @@ class BMSOI_Admin {
 			wp_send_json_error( array( 'message' => is_wp_error( $order_id ) ? $order_id->get_error_message() : __( 'Η εισαγωγή απέτυχε.', 'bm-skroutz-order-import' ) ) );
 		}
 
+		delete_transient( 'bmsoi_mb_' . md5( (string) $code ) );
+
 		wp_send_json_success( array(
 			'order_id'  => $order_id,
 			'order_url' => admin_url( 'post.php?post=' . $order_id . '&action=edit' ),
@@ -601,6 +642,7 @@ class BMSOI_Admin {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
 
+		delete_transient( 'bmsoi_mb_' . md5( (string) $code ) );
 		$order->update_status( 'processing' );
 		wp_send_json_success();
 	}
@@ -625,6 +667,7 @@ class BMSOI_Admin {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
 
+		delete_transient( 'bmsoi_mb_' . md5( (string) $code ) );
 		wp_send_json_success();
 	}
 
