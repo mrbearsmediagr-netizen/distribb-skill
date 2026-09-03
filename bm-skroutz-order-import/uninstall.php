@@ -28,6 +28,7 @@ $bmsoi_options = array(
 	'bmsoi_disable_emails',
 	'bmsoi_debug',
 	'bmsoi_marketplace_icon',
+	'bmsoi_list_marker',
 	'bmsoi_import_since',
 );
 

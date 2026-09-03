@@ -19,16 +19,15 @@ class BMSOI_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metabox' ), 10, 2 );
 
-		// Mark Skroutz rows on the orders list so the icon can be shown right
-		// before the buyer name (legacy posts table + HPOS table).
-		add_filter( 'woocommerce_shop_order_list_table_order_css_classes', array( __CLASS__, 'hpos_row_classes' ), 10, 2 );
-		add_filter( 'post_class', array( __CLASS__, 'legacy_row_classes' ), 10, 3 );
+		// Show a Skroutz marker right before the buyer name on the orders list.
+		// Uses WooCommerce's own buyer-name filter, so it renders server-side
+		// on BOTH the legacy posts table and the HPOS table — no JS, no caches.
+		add_filter( 'woocommerce_admin_order_buyer_name', array( __CLASS__, 'prefix_buyer_name' ), 10, 2 );
 
 		add_action( 'admin_post_bmsoi_sync_now', array( __CLASS__, 'handle_sync_now' ) );
 		add_action( 'wp_ajax_bmsoi_fetch_order', array( __CLASS__, 'ajax_fetch_order' ) );
 		add_action( 'wp_ajax_bmsoi_accept_order', array( __CLASS__, 'ajax_accept_order' ) );
 		add_action( 'wp_ajax_bmsoi_reject_order', array( __CLASS__, 'ajax_reject_order' ) );
-		add_action( 'wp_ajax_bmsoi_check_orders', array( __CLASS__, 'ajax_check_orders' ) );
 	}
 
 	public static function register_menu() {
@@ -62,6 +61,7 @@ class BMSOI_Admin {
 			'bmsoi_disable_emails',
 			'bmsoi_debug',
 			'bmsoi_marketplace_icon',
+			'bmsoi_list_marker',
 		);
 		foreach ( $settings as $setting ) {
 			register_setting( 'bmsoi_settings', $setting );
@@ -117,11 +117,12 @@ class BMSOI_Admin {
 	}
 
 	/* ---------------------------------------------------------------------
-	 * Orders list: Skroutz icon right before the buyer name
+	 * Orders list: Skroutz marker right before the buyer name
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * URL of the Skroutz badge icon. Configurable; falls back to the bundled SVG.
+	 * URL of the Skroutz badge icon (used in the order metabox / settings).
+	 * Configurable; falls back to the bundled SVG.
 	 */
 	public static function icon_url() {
 		$url = trim( (string) get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) );
@@ -132,33 +133,23 @@ class BMSOI_Admin {
 	}
 
 	/**
-	 * Skroutz marker classes for an order row. The admin JS injects the icon
-	 * into the order-number cell of any row carrying these classes.
+	 * Prepend a marker (default 🟠) to the buyer name of Skroutz orders on the
+	 * orders list. WooCommerce escapes the buyer name as plain text, so the
+	 * marker is an emoji/text — which is exactly what renders reliably on both
+	 * the legacy and HPOS tables without any JavaScript.
+	 *
+	 * @param string   $buyer Buyer name.
+	 * @param WC_Order $order Order.
+	 * @return string
 	 */
-	private static function marketplace_row_classes( $order, $classes ) {
+	public static function prefix_buyer_name( $buyer, $order ) {
 		if ( $order instanceof WC_Order && bmsoi_is_skroutz_order( $order ) ) {
-			$classes[] = 'bmsoi-skroutz';
-			if ( $order->get_meta( '_skroutz_express' ) ) {
-				$classes[] = 'bmsoi-express';
-			}
-			if ( $order->get_meta( '_skroutz_fulfilled' ) ) {
-				$classes[] = 'bmsoi-fbs';
+			$marker = trim( (string) get_option( 'bmsoi_list_marker', '🟠' ) );
+			if ( '' !== $marker ) {
+				$buyer = $marker . ' ' . $buyer;
 			}
 		}
-		return $classes;
-	}
-
-	/** HPOS orders table rows. */
-	public static function hpos_row_classes( $classes, $order ) {
-		return self::marketplace_row_classes( $order, $classes );
-	}
-
-	/** Legacy (posts) orders table rows. */
-	public static function legacy_row_classes( $classes, $css_class, $post_id ) {
-		if ( ! is_admin() || 'shop_order' !== get_post_type( $post_id ) ) {
-			return $classes;
-		}
-		return self::marketplace_row_classes( wc_get_order( $post_id ), $classes );
+		return $buyer;
 	}
 
 	/* ---------------------------------------------------------------------
@@ -374,13 +365,20 @@ class BMSOI_Admin {
 							</td>
 						</tr>
 						<tr>
+							<th scope="row"><label for="bmsoi_list_marker"><?php esc_html_e( 'Δείκτης λίστας', 'bm-skroutz-order-import' ); ?></label></th>
+							<td>
+								<input type="text" id="bmsoi_list_marker" name="bmsoi_list_marker" class="small-text" style="width:90px" value="<?php echo esc_attr( get_option( 'bmsoi_list_marker', '🟠' ) ); ?>">
+								<p class="description"><?php esc_html_e( 'Μπαίνει ακριβώς πριν το όνομα του πελάτη στη λίστα παραγγελιών (π.χ. «🟠 SKR Κατερίνα»). Εμφανίζεται πάντα, χωρίς εξάρτηση από JavaScript. Χρησιμοποιήστε ένα emoji. Κενό = απενεργοποίηση.', 'bm-skroutz-order-import' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th scope="row"><label for="bmsoi_marketplace_icon"><?php esc_html_e( 'Εικονίδιο Skroutz', 'bm-skroutz-order-import' ); ?></label></th>
 							<td>
 								<div class="bmsoi-inline">
 									<img src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="24" height="24" class="bmsoi-col-icon">
 									<input type="url" id="bmsoi_marketplace_icon" name="bmsoi_marketplace_icon" class="regular-text code" value="<?php echo esc_attr( get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) ); ?>">
 								</div>
-								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στη λίστα παραγγελιών, πριν το όνομα του πελάτη. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στην καρτέλα (metabox) της παραγγελίας Skroutz. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -647,31 +645,6 @@ class BMSOI_Admin {
 		}
 
 		wp_send_json_success();
-	}
-
-	/**
-	 * Fallback for the orders-list icon: the admin JS sends the order IDs it
-	 * sees in the table and gets back which of them are Skroutz orders. Used
-	 * when the row CSS classes are missing (custom admin themes etc.).
-	 */
-	public static function ajax_check_orders() {
-		self::verify_ajax();
-
-		$ids = isset( $_POST['order_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['order_ids'] ) ) : array();
-		$ids = array_slice( array_filter( array_unique( $ids ) ), 0, 200 );
-
-		$orders = array();
-		foreach ( $ids as $id ) {
-			$order = wc_get_order( $id );
-			if ( $order instanceof WC_Order && bmsoi_is_skroutz_order( $order ) ) {
-				$orders[ $id ] = array(
-					'express' => (bool) $order->get_meta( '_skroutz_express' ),
-					'fbs'     => (bool) $order->get_meta( '_skroutz_fulfilled' ),
-				);
-			}
-		}
-
-		wp_send_json_success( array( 'orders' => $orders ) );
 	}
 
 	public static function handle_sync_now() {
