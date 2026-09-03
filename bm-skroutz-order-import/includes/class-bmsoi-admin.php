@@ -60,7 +60,6 @@ class BMSOI_Admin {
 			'bmsoi_polling_interval',
 			'bmsoi_disable_emails',
 			'bmsoi_debug',
-			'bmsoi_marketplace_icon',
 			'bmsoi_list_marker',
 		);
 		foreach ( $settings as $setting ) {
@@ -102,16 +101,12 @@ class BMSOI_Admin {
 		wp_localize_script( 'bmsoi-admin', 'bmsoi', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'bmsoi_ajax' ),
-			'iconUrl' => self::icon_url(),
 			'i18n'    => array(
 				'working'      => __( 'Παρακαλώ περιμένετε…', 'bm-skroutz-order-import' ),
 				'failed'       => __( 'Η ενέργεια απέτυχε.', 'bm-skroutz-order-import' ),
 				'imported'     => __( 'Η παραγγελία ενημερώθηκε. Άνοιγμα σε νέα καρτέλα;', 'bm-skroutz-order-import' ),
 				'copied'       => __( 'Αντιγράφηκε!', 'bm-skroutz-order-import' ),
 				'confirmReject' => __( 'Σίγουρα θέλετε να απορρίψετε την παραγγελία στο Skroutz;', 'bm-skroutz-order-import' ),
-				'skroutzOrder' => __( 'Παραγγελία Skroutz Marketplace', 'bm-skroutz-order-import' ),
-				'express'      => __( 'Express', 'bm-skroutz-order-import' ),
-				'fbs'          => __( 'Fulfilled by Skroutz', 'bm-skroutz-order-import' ),
 			),
 		) );
 	}
@@ -121,22 +116,17 @@ class BMSOI_Admin {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * URL of the Skroutz badge icon (used in the order metabox / settings).
-	 * Configurable; falls back to the bundled SVG.
+	 * The recognition marker (default 🟠). Empty disables it.
 	 */
-	public static function icon_url() {
-		$url = trim( (string) get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) );
-		if ( '' === $url ) {
-			$url = BMSOI_PLUGIN_URL . 'admin/img/skroutz-icon.svg';
-		}
-		return apply_filters( 'bmsoi_marketplace_icon_url', $url );
+	public static function marker() {
+		return trim( (string) get_option( 'bmsoi_list_marker', '🟠' ) );
 	}
 
 	/**
-	 * Prepend a marker (default 🟠) to the buyer name of Skroutz orders on the
-	 * orders list. WooCommerce escapes the buyer name as plain text, so the
-	 * marker is an emoji/text — which is exactly what renders reliably on both
-	 * the legacy and HPOS tables without any JavaScript.
+	 * Prepend the marker to the buyer name of Skroutz orders on the orders
+	 * list. WooCommerce escapes the buyer name as plain text, so the marker is
+	 * an emoji/text — which is exactly what renders reliably on both the legacy
+	 * and HPOS tables without any JavaScript.
 	 *
 	 * @param string   $buyer Buyer name.
 	 * @param WC_Order $order Order.
@@ -144,7 +134,7 @@ class BMSOI_Admin {
 	 */
 	public static function prefix_buyer_name( $buyer, $order ) {
 		if ( $order instanceof WC_Order && bmsoi_is_skroutz_order( $order ) ) {
-			$marker = trim( (string) get_option( 'bmsoi_list_marker', '🟠' ) );
+			$marker = self::marker();
 			if ( '' !== $marker ) {
 				$buyer = $marker . ' ' . $buyer;
 			}
@@ -372,16 +362,6 @@ class BMSOI_Admin {
 							</td>
 						</tr>
 						<tr>
-							<th scope="row"><label for="bmsoi_marketplace_icon"><?php esc_html_e( 'Εικονίδιο Skroutz', 'bm-skroutz-order-import' ); ?></label></th>
-							<td>
-								<div class="bmsoi-inline">
-									<img src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="24" height="24" class="bmsoi-col-icon">
-									<input type="url" id="bmsoi_marketplace_icon" name="bmsoi_marketplace_icon" class="regular-text code" value="<?php echo esc_attr( get_option( 'bmsoi_marketplace_icon', 'https://masiou.com/wp-content/uploads/2026/09/skroutz-icon.png' ) ); ?>">
-								</div>
-								<p class="description"><?php esc_html_e( 'Το εικονίδιο που εμφανίζεται στην καρτέλα (metabox) της παραγγελίας Skroutz. Κενό = ενσωματωμένο εικονίδιο του πρόσθετου.', 'bm-skroutz-order-import' ); ?></p>
-							</td>
-						</tr>
-						<tr>
 							<th scope="row"><?php esc_html_e( 'Καταγραφή (log)', 'bm-skroutz-order-import' ); ?></th>
 							<td>
 								<label><input type="checkbox" name="bmsoi_debug" value="yes" <?php checked( get_option( 'bmsoi_debug', 'yes' ), 'yes' ); ?>> <?php esc_html_e( 'Καταγραφή αιτημάτων στο WooCommerce > Κατάσταση > Αρχεία καταγραφής (πηγή: bm-skroutz)', 'bm-skroutz-order-import' ); ?></label>
@@ -480,7 +460,8 @@ class BMSOI_Admin {
 		?>
 		<div class="bmsoi-mb" data-order="<?php echo esc_attr( $code ); ?>">
 			<div class="bmsoi-mb-header">
-				<img class="bmsoi-mb-icon" src="<?php echo esc_url( self::icon_url() ); ?>" alt="Skroutz" width="20" height="20">
+				<?php $marker = self::marker(); ?>
+				<?php if ( '' !== $marker ) : ?><span class="bmsoi-mb-marker"><?php echo esc_html( $marker ); ?></span><?php endif; ?>
 				<span class="bmsoi-mb-code">#<?php echo esc_html( $code ); ?></span>
 				<span class="bmsoi-mb-badge bmsoi-state-<?php echo esc_attr( $state ); ?>"><?php echo esc_html( $labels[ $state ] ?? $state ); ?></span>
 			</div>

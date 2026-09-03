@@ -4,7 +4,7 @@ Tags: woocommerce, skroutz, marketplace, orders, import
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Ναι: `bmsoi_order_imported`, `bmsoi_webhook_received`, `bmsoi_status_for_state`, `bmsoi_pre_resolve_product`, `bmsoi_resolve_product_fallback`, καθώς και φίλτρα για όλα τα meta keys τιμολογίου.
 
 == Changelog ==
+
+= 1.1.2 =
+* Αφαίρεση της ρύθμισης «Εικονίδιο Skroutz» και της εξάρτησης από εξωτερική εικόνα — η καρτέλα (metabox) της παραγγελίας δείχνει πλέον τον ίδιο δείκτη (🟠) με τη λίστα.
 
 = 1.1.1 =
 * Ο δείκτης Skroutz στη λίστα παραγγελιών μπαίνει πλέον server-side (πορτοκαλί emoji 🟠 πριν το όνομα), μέσω του φίλτρου buyer-name του WooCommerce — εμφανίζεται πάντα, σε legacy και HPOS πίνακες, χωρίς εξάρτηση από JavaScript ή cache. Ρυθμιζόμενος από τη νέα επιλογή «Δείκτης λίστας».

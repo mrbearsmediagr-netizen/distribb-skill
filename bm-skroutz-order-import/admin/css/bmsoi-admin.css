@@ -19,19 +19,6 @@
 	align-items: center;
 }
 
-/* Orders list: inline Skroutz icon before the buyer name */
-.bmsoi-inline-icon {
-	vertical-align: text-bottom;
-	border-radius: 4px;
-	margin: 0 4px 0 1px;
-}
-
-/* Settings page: icon preview */
-.bmsoi-col-icon {
-	vertical-align: middle;
-	border-radius: 5px;
-}
-
 /* Order metabox */
 .bmsoi-mb-header {
 	display: flex;
@@ -40,8 +27,9 @@
 	margin-bottom: 8px;
 }
 
-.bmsoi-mb-icon {
-	border-radius: 4px;
+.bmsoi-mb-marker {
+	font-size: 16px;
+	line-height: 1;
 }
 
 .bmsoi-mb-code {
